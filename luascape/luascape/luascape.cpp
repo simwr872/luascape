@@ -23,24 +23,47 @@ HWND runescapeClient;
 long runescapeStyle;
 
 // Forward declarations of functions included in this code module:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
+ATOM                RegisterOverlayClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
 
 
+
+
+
+//
+//   FUNCTION: GetWorkingDirectory()
+//
+//   PURPOSE:  Fetches the current working directory
+//
 string GetWorkingDirectory() {
+	// Gets the working directory for our module.
 	HMODULE hModule = GetModuleHandleW(NULL);
 	WCHAR path[MAX_PATH];
 	GetModuleFileNameW(hModule, path, MAX_PATH);
+
+	// Converts the wide string into a string.
+	// Directory returned actually describes the
+	// exact file of our executable, so the part
+	// after the last '\' is trimmed.
 	string dir = w2s(path);
 	dir.erase(dir.rfind('\\'));
 
 	return dir;
 }
 
-
+//
+//   FUNCTION: ScriptFiles(HWND hWnd)
+//
+//   PURPOSE:  Defines what files to be opened as scripts.
+//
+//   COMMENTS:
+//
+//        We only allow files of type .lua. The functions requires an HWND
+//        which specifies the owner of the dialog.
+//
 OPENFILENAME ScriptFiles(HWND hWnd) {
 	OPENFILENAME ofn;
 
@@ -57,10 +80,7 @@ OPENFILENAME ScriptFiles(HWND hWnd) {
 }
 
 
-int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-					  _In_opt_ HINSTANCE hPrevInstance,
-					  _In_ LPWSTR    lpCmdLine,
-					  _In_ int       nCmdShow) {
+int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
@@ -79,7 +99,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	// Initialize global strings
 	LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
 	LoadStringW(hInstance, IDC_LUASCAPE, szWindowClass, MAX_LOADSTRING);
-	MyRegisterClass(hInstance);
+	RegisterOverlayClass(hInstance);
 
 	// Perform application initialization:
 	if (!InitInstance(hInstance, nCmdShow)) {
@@ -104,11 +124,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 
 //
-//  FUNCTION: MyRegisterClass()
+//  FUNCTION: RegisterOverlayClass()
 //
 //  PURPOSE: Registers the window class.
 //
-ATOM MyRegisterClass(HINSTANCE hInstance) {
+ATOM RegisterOverlayClass(HINSTANCE hInstance) {
 	WNDCLASSEXW wcex;
 
 	wcex.cbSize = sizeof(WNDCLASSEX);
@@ -131,49 +151,85 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
 //
 //   FUNCTION: InitInstance(HINSTANCE, int)
 //
-//   PURPOSE: Saves instance handle and creates main window
+//   PURPOSE: Saves instance handle & RuneScape windows. Also creates main window.
 //
 //   COMMENTS:
 //
 //        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
+//        create and display the main program window. The RuneScape window and
+//		  client are also saved in global variables.
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
+	// Find the associated RuneScape window, used to find
+	// the client area aswell as handling how the original
+	// window actually looks like.
 	runescapeWindow = FindWindow(NULL, L"RuneScape");
+
+	// The runescape window only has one child (the client),
+	// this is the HWND we send inputs to.
 	runescapeClient = GetWindow(runescapeWindow, GW_CHILD);
+
+	// Fetch the style used to reset upon application exit.
 	runescapeStyle = GetWindowLong(runescapeWindow, GWL_STYLE);
+
+	// Disable border (caption) and titlebar to make our
+	// window only display the actual game.
 	SetWindowLong(runescapeWindow, GWL_STYLE, runescapeStyle & ~(WS_CAPTION | WS_SIZEBOX));
+
+	// Resizes our RuneScape window to the desired dimensions
+	// without moving it or changing its Z-location.
 	SetWindowPos(runescapeWindow, NULL, NULL, NULL, WIDTH, HEIGHT, SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+	// Disables the user from actually interacting with
+	// the RuneScape client. Otherwise we might send two
+	// different mouse locations at once(!).
 	EnableWindow(runescapeClient, false);
 
+	// Saves our instance in a global variable for future use.
 	hInst = hInstance;
+
+	// Defines how our overlay should look. Built in function
+	// calculates how much extra space to accomodate for our
+	// desired client size.
 	RECT rect { 0, 0, WIDTH, HEIGHT };
 	DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX);
 	AdjustWindowRectEx(&rect, style, true, WS_EX_LAYERED);
 	int width = rect.right - rect.left;
 	int height = rect.bottom - rect.top;
+	// Creates our overlay window with the specified styles.
+	// Our window cannot be rezied, maximized nor minimized.
+	// It is also set as a child of the original RuneScape window,
+	// this is to fix Z-position rendering issues. Also displays
+	// the client correctly when the user clicks the RuneScape
+	// icon in the system tray. Asserts we actually created it.
 	HWND hWnd = CreateWindowEx(WS_EX_LAYERED, szWindowClass, szTitle, style, CW_USEDEFAULT, CW_USEDEFAULT, width, height, runescapeWindow, NULL, hInstance, NULL);
 	if (!hWnd) return FALSE;
 
+	// Defines (255, 0, 255) 'MAGENTA' as our transparent color.
+	// This color (should) rarely be used and therefor is a good
+	// fit for our task. Also sets the overlay background to
+	// this color. (Rendering it transparent).
 	HBRUSH brush = CreateSolidBrush(RGB(255, 0, 255));
 	SetClassLongPtr(hWnd, GCLP_HBRBACKGROUND, (LONG) brush);
 	SetLayeredWindowAttributes(hWnd, RGB(255, 0, 255), 0, LWA_COLORKEY);
 
+	// Shows and updates the window
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
 
 	return TRUE;
 }
 
+
 //
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
+//   FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
-//  PURPOSE:  Processes messages for the main window.
+//   PURPOSE:  Processes messages for the main window.
 //
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
+//   WM_MOVE	- handle when window is moved
+//   WM_COMMAND	- process the application menu
+//   WM_PAINT   - paint the main window
+//   WM_DESTROY - post a quit message and return
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
@@ -232,13 +288,13 @@ INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
 		case WM_INITDIALOG:
 			return (INT_PTR) TRUE;
-
-		case WM_COMMAND:
+		case WM_COMMAND: {
 			if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL) {
 				EndDialog(hDlg, LOWORD(wParam));
 				return (INT_PTR) TRUE;
 			}
 			break;
+		}
 	}
 	return (INT_PTR) FALSE;
 }
