@@ -15,6 +15,13 @@ HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
+
+static const unsigned int WIDTH = 800;
+static const unsigned int HEIGHT = 600;
+HWND runescapeWindow;
+HWND runescapeClient;
+long runescapeStyle;
+
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -132,14 +139,25 @@ ATOM MyRegisterClass(HINSTANCE hInstance) {
 //        create and display the main program window.
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
-	hInst = hInstance; // Store instance handle in our global variable
+	runescapeWindow = FindWindow(NULL, L"RuneScape");
+	runescapeClient = GetWindow(runescapeWindow, GW_CHILD);
+	runescapeStyle = GetWindowLong(runescapeWindow, GWL_STYLE);
+	SetWindowLong(runescapeWindow, GWL_STYLE, runescapeStyle & ~(WS_CAPTION | WS_SIZEBOX));
+	SetWindowPos(runescapeWindow, NULL, NULL, NULL, WIDTH, HEIGHT, SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED);
+	EnableWindow(runescapeClient, false);
 
-	HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-							  CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+	hInst = hInstance;
+	RECT rect { 0, 0, WIDTH, HEIGHT };
+	DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX);
+	AdjustWindowRectEx(&rect, style, true, WS_EX_LAYERED);
+	int width = rect.right - rect.left;
+	int height = rect.bottom - rect.top;
+	HWND hWnd = CreateWindowEx(WS_EX_LAYERED, szWindowClass, szTitle, style, CW_USEDEFAULT, CW_USEDEFAULT, width, height, runescapeWindow, NULL, hInstance, NULL);
+	if (!hWnd) return FALSE;
 
-	if (!hWnd) {
-		return FALSE;
-	}
+	HBRUSH brush = CreateSolidBrush(RGB(255, 0, 255));
+	SetClassLongPtr(hWnd, GCLP_HBRBACKGROUND, (LONG) brush);
+	SetLayeredWindowAttributes(hWnd, RGB(255, 0, 255), 0, LWA_COLORKEY);
 
 	ShowWindow(hWnd, nCmdShow);
 	UpdateWindow(hWnd);
@@ -159,6 +177,10 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
+		case WM_MOVE: {
+			//TODO: MOVE RUNESCAPE WINDOW UPON MOVING OUR WINDOW
+			break;
+		}
 		case WM_COMMAND: {
 			int wmId = LOWORD(wParam);
 			// Parse the menu selections:
@@ -193,6 +215,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			break;
 		}
 		case WM_DESTROY:
+			//TODO: PROGRAM CLEANUP, DELETE POINTERS, RESET RUNESCAPE WINDOW
+			EnableWindow(runescapeClient, true);
+			SetWindowLong(runescapeWindow, GWL_STYLE, runescapeStyle);
 			PostQuitMessage(0);
 			break;
 		default:
