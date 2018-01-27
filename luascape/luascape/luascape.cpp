@@ -36,7 +36,12 @@ BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
-
+// Variables to handle resizing our overlay window accomodating
+// for the titlebar and menu (aswell as hidden shadows taking
+// up pixels). Also used when positioning the RuneScape window
+// within ours - to make it line up.
+RECT adjustedRect { 0, 0, WIDTH, HEIGHT };
+DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX);
 
 
 
@@ -110,6 +115,10 @@ void LuaHook(lua_State *Lua, lua_Debug *arg) {
 //        periodically checks if we should be exiting the thread.
 //
 void RunLuaScript(string script) {
+	// Disables the user from actually interacting with
+	// the RuneScape client. Otherwise we might send two
+	// different mouse locations at once(!).
+	EnableWindow(runescapeClient, false);
 	// Declare the script state as running
 	scriptStatus = LUA_RUNNING;
 
@@ -127,9 +136,16 @@ void RunLuaScript(string script) {
 	// Loads the users file and executes it. If we are done
 	// or an error occured - close the lua state and reset
 	// script status. The thread will then exit on its own.
-	luaL_dofile(Lua, script.c_str());
+	int result = luaL_dofile(Lua, script.c_str());
+	if (result != LUA_OK) {
+		string s = lua_tostring(Lua, -1);
+		MessageBox(NULL, s2w(s.c_str()), L"Lua status", MB_OK);
+	}
 	lua_close(Lua);
 	scriptStatus = LUA_STOPPED;
+
+	// Reenables interaction with the client.
+	EnableWindow(runescapeClient, true);
 }
 
 
@@ -233,10 +249,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	// without moving it or changing its Z-location.
 	SetWindowPos(runescapeWindow, NULL, NULL, NULL, WIDTH, HEIGHT, SWP_NOMOVE | SWP_NOZORDER | SWP_FRAMECHANGED);
 
-	// Disables the user from actually interacting with
-	// the RuneScape client. Otherwise we might send two
-	// different mouse locations at once(!).
-	EnableWindow(runescapeClient, false);
 
 	// Saves our instance in a global variable for future use.
 	hInst = hInstance;
@@ -244,11 +256,9 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	// Defines how our overlay should look. Built in function
 	// calculates how much extra space to accomodate for our
 	// desired client size.
-	RECT rect { 0, 0, WIDTH, HEIGHT };
-	DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX);
-	AdjustWindowRectEx(&rect, style, true, WS_EX_LAYERED);
-	int width = rect.right - rect.left;
-	int height = rect.bottom - rect.top;
+	AdjustWindowRectEx(&adjustedRect, style, true, WS_EX_LAYERED);
+	int width = adjustedRect.right - adjustedRect.left;
+	int height = adjustedRect.bottom - adjustedRect.top;
 	// Creates our overlay window with the specified styles.
 	// Our window cannot be rezied, maximized nor minimized.
 	// It is also set as a child of the original RuneScape window,
@@ -286,7 +296,18 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
 	switch (message) {
 		case WM_MOVE: {
-			//TODO: MOVE RUNESCAPE WINDOW UPON MOVING OUR WINDOW
+			// Gets the current overlay position and calculates where
+			// its client area begins. We then set the RuneScape window
+			// to these coordinates, creating the illusion of a normal
+			// window.
+			RECT windowRect;
+			GetWindowRect(hWnd, &windowRect);
+			int x = windowRect.left + abs(adjustedRect.left);
+			int y = windowRect.top + abs(adjustedRect.top);
+			// We only want to update the position, not send any frame
+			// repaints, Z-index change or resize it. (RuneScape window
+			// should already be desired size from initilazation)
+			SetWindowPos(runescapeWindow, NULL, x, y, NULL, NULL, SWP_NOSIZE | SWP_NOZORDER);
 			break;
 		}
 		case WM_COMMAND: {
@@ -300,7 +321,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					DestroyWindow(hWnd);
 					break;
 				case IDM_SCRIPT_LOAD: {
-
 					// Opens a file dialog according to our specifications
 					wchar_t fn[MAX_PATH] = { 0 };
 					OPENFILENAME ofn = ScriptFiles(hWnd);
@@ -336,7 +356,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			break;
 		}
 		case WM_DESTROY:
-			//TODO: PROGRAM CLEANUP, DELETE POINTERS, RESET RUNESCAPE WINDOW
 			EnableWindow(runescapeClient, true);
 			SetWindowLong(runescapeWindow, GWL_STYLE, runescapeStyle);
 			PostQuitMessage(0);
