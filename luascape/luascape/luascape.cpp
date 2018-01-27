@@ -8,6 +8,7 @@
 #include "luascape.h"
 #include "lua.hpp"
 #include <thread>
+#include "Vec2.h"
 using namespace std;
 
 #define MAX_LOADSTRING 100
