@@ -6,28 +6,35 @@
 #include <commdlg.h>
 #include <iostream>
 #include "luascape.h"
+#include "lua.hpp"
+#include <thread>
 using namespace std;
 
 #define MAX_LOADSTRING 100
+
+#define LUA_STOPPED 0
+#define LUA_STOPPING 1
+#define LUA_RUNNING 2
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
-
 static const unsigned int WIDTH = 800;
 static const unsigned int HEIGHT = 600;
 HWND runescapeWindow;
 HWND runescapeClient;
 long runescapeStyle;
+int scriptStatus = LUA_STOPPED;
+
+
 
 // Forward declarations of functions included in this code module:
 ATOM                RegisterOverlayClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
 
 
 
@@ -80,6 +87,54 @@ OPENFILENAME ScriptFiles(HWND hWnd) {
 }
 
 
+
+//
+//   FUNCTION: LuaHook(lua_State *Lua, lua_Debug *arg)
+//
+//   PURPOSE:  Checks if we should be exiting and throws error
+//			   if that is the case.
+//
+void LuaHook(lua_State *Lua, lua_Debug *arg) {
+	if (scriptStatus == LUA_STOPPING) luaL_error(Lua, "User terminated script.");
+}
+
+//
+//   FUNCTION: RunLuaScript(string script)
+//
+//   PURPOSE:  Executes the users script.
+//
+//   COMMENTS:
+//
+//        This function should only be called from within a new thread.
+//        It creates and executes code inside a lua state, which
+//        periodically checks if we should be exiting the thread.
+//
+void RunLuaScript(string script) {
+	// Declare the script state as running
+	scriptStatus = LUA_RUNNING;
+
+	// Create a new lua state and load all default libraries.
+	// Some libraries have been disabled such as parts of the
+	// OS library, the entire IO and DEBUG library.
+	// We also set our hook to check if we should be exiting
+	// the thread. This occurs every 10k lines executed.
+	// (10k might be a subject to change)
+	lua_State* Lua = luaL_newstate();
+	luaL_openlibs(Lua);
+	// TODO: LOAD OUR OWN FUNCTIONS FOR MOUSE ETC...
+	lua_sethook(Lua, &LuaHook, LUA_MASKCOUNT, 10000);
+
+	// Loads the users file and executes it. If we are done
+	// or an error occured - close the lua state and reset
+	// script status. The thread will then exit on its own.
+	luaL_dofile(Lua, script.c_str());
+	lua_close(Lua);
+	scriptStatus = LUA_STOPPED;
+}
+
+
+
+
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
@@ -102,9 +157,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	RegisterOverlayClass(hInstance);
 
 	// Perform application initialization:
-	if (!InitInstance(hInstance, nCmdShow)) {
-		return FALSE;
-	}
+	if (!InitInstance(hInstance, nCmdShow)) return FALSE;
 
 	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LUASCAPE));
 
@@ -220,7 +273,6 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	return TRUE;
 }
 
-
 //
 //   FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
 //
@@ -249,14 +301,27 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					break;
 				case IDM_SCRIPT_LOAD: {
 
+					// Opens a file dialog according to our specifications
 					wchar_t fn[MAX_PATH] = { 0 };
 					OPENFILENAME ofn = ScriptFiles(hWnd);
 					ofn.lpstrFile = fn;
 					GetOpenFileName(&ofn);
 
-					string filename = w2s(fn);
-					cout << filename << endl;
+					// Translates the filename and checks whether we actually
+					// did select a file. If so we set any running scripts
+					// for termination and waits until they are terminated.
+					// We then create a new thread and run our script.
+					string script = w2s(fn);
+					if (script.length() != 0) {
+						if (scriptStatus == LUA_RUNNING) scriptStatus = LUA_STOPPING;
+						while (scriptStatus != LUA_STOPPED) {}
+						thread client(RunLuaScript, script);
+						client.detach();
+					}
 					break;
+				}
+				case IDM_SCRIPT_STOP: {
+					if (scriptStatus == LUA_RUNNING) scriptStatus = LUA_STOPPING;
 				}
 				default:
 					return DefWindowProc(hWnd, message, wParam, lParam);
