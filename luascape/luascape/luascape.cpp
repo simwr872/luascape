@@ -18,9 +18,13 @@ using namespace std;
 #define LUA_RUNNING 2
 
 // Global Variables:
+// TODO: recheck where used. hInst only used when
+// spawning About box.
 HINSTANCE hInst;                                // current instance
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+
+HWND overlay;
 
 static const unsigned int WIDTH = 800;
 static const unsigned int HEIGHT = 600;
@@ -28,6 +32,7 @@ HWND runescapeWindow;
 HWND runescapeClient;
 long runescapeStyle;
 int scriptStatus = LUA_STOPPED;
+float mx, my, pmx, pmy;							// Previous and current mouse x & y
 
 
 
@@ -43,7 +48,6 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 // within ours - to make it line up.
 RECT adjustedRect { 0, 0, WIDTH, HEIGHT };
 DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX);
-
 
 
 //
@@ -83,8 +87,16 @@ OPENFILENAME ScriptFiles(HWND hWnd) {
 	ZeroMemory(&ofn, sizeof(ofn));
 	ofn.hwndOwner = hWnd;
 	ofn.lStructSize = sizeof(OPENFILENAME);
+
 	//TODO: PREPEND '/script' DIRECTORY
-	ofn.lpstrInitialDir = s2w(GetWorkingDirectory().c_str());
+	string pwd = GetWorkingDirectory();
+	pwd.erase(pwd.rfind('\\'));
+	pwd.erase(pwd.rfind('\\'));
+	pwd.erase(pwd.rfind('\\'));
+	pwd += "\\scripts";
+	//TODO: PREPEND '/script' DIRECTORY
+
+	ofn.lpstrInitialDir = s2w(pwd.c_str());
 	ofn.lpstrFilter = L"Lua files (.lua)\0*.LUA";
 	ofn.nMaxFile = MAX_PATH;
 	ofn.Flags = OFN_EXPLORER | OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
@@ -93,6 +105,76 @@ OPENFILENAME ScriptFiles(HWND hWnd) {
 }
 
 
+// TODO: move to a separate class for handling
+// with all kinds of mice?
+float MouseDist(float x) {
+	float ts = pow(x, 2);
+	float tc = pow(x, 3);
+	return 1 - (tc*ts + -5 * tc + 5 * ts);
+}
+
+int LuaMove(lua_State *Lua) {
+	// TODO: Cleanup
+
+	// TODO: error checking
+	float x = lua_tonumber(Lua, -2);
+	float y = lua_tonumber(Lua, -1);
+	lua_pop(Lua, 2);
+
+	
+
+	int time = 500;
+	vec2 start = vec2(mx, my);
+	vec2 goal = vec2(x, y);
+	vec2 diff = goal - start;
+	vec2 norm = vec2(diff.y, -diff.x);
+	for (float i = 0; i < time; i++) {
+		float dist = MouseDist(i / time);
+		//float dev = mc->deviation(i / time);
+
+		vec2 loc = goal - diff * dist;
+		//loc = loc + norm * (dev / norm.length()) * 5;
+		mx = loc.x;
+		my = loc.y;
+		//SetCursorPos(mx, my);
+		PostMessage(runescapeClient, WM_MOUSEMOVE, 0, MAKELPARAM(mx, my));
+		InvalidateRect(overlay, NULL, NULL);
+		//UpdateWindow(overlay);
+		Sleep(1);
+	}
+	mx = x;
+	my = y;
+	PostMessage(runescapeClient, WM_MOUSEMOVE, 0, MAKELPARAM(mx, my));
+
+	return 0;
+}
+
+//
+//   FUNCTION: LuaClick(lua_State *Lua)
+//
+//   PURPOSE:  Allows the script to click the RuneScape client.
+//
+//   COMMENTS:
+//
+int LuaClick(lua_State *Lua) {
+	// Send a click message to the RuneScape client at
+	// our current mouse coordinates with a delay before
+	// we release the mouse.
+	PostMessage(runescapeClient, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(mx, my));
+	// TODO: lognormal distribution AND record how long clicks actually are.
+	Sleep(rand() % (120 - 60 + 1) + 60);
+	PostMessage(runescapeClient, WM_LBUTTONUP, 0, MAKELPARAM(mx, my));
+	cout << "click" << endl;
+	// Lua functions return how many values a function
+	// should return in the script. We return 0.
+	return 0;
+}
+
+static const luaL_Reg LuaLibrary[] = {
+	{ "click", LuaClick },
+	{ "move", LuaMove },
+	{ NULL, NULL }
+};
 
 //
 //   FUNCTION: LuaHook(lua_State *Lua, lua_Debug *arg)
@@ -131,8 +213,11 @@ void RunLuaScript(string script) {
 	// (10k might be a subject to change)
 	lua_State* Lua = luaL_newstate();
 	luaL_openlibs(Lua);
-	// TODO: LOAD OUR OWN FUNCTIONS FOR MOUSE ETC...
-	lua_sethook(Lua, &LuaHook, LUA_MASKCOUNT, 10000);
+	lua_sethook(Lua, &LuaHook, LUA_MASKLINE, 0);
+	// Load our own functions defined and make it available
+	// to the script as 'client'.
+	luaL_newlib(Lua, LuaLibrary);
+	lua_setglobal(Lua, "client");
 
 	// Loads the users file and executes it. If we are done
 	// or an error occured - close the lua state and reset
@@ -268,6 +353,7 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 	// icon in the system tray. Asserts we actually created it.
 	HWND hWnd = CreateWindowEx(WS_EX_LAYERED, szWindowClass, szTitle, style, CW_USEDEFAULT, CW_USEDEFAULT, width, height, runescapeWindow, NULL, hInstance, NULL);
 	if (!hWnd) return FALSE;
+	overlay = hWnd;
 
 	// Defines (255, 0, 255) 'MAGENTA' as our transparent color.
 	// This color (should) rarely be used and therefor is a good
@@ -295,7 +381,20 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow) {
 //   WM_DESTROY - post a quit message and return
 //
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+	// Variables used when repainting, declared here
+	// to avoid GDI leaks.
+	static HPEN transparent;
+	static HPEN green;
+	PAINTSTRUCT ps;
+	HDC hdc;
+
 	switch (message) {
+		case WM_CREATE: {
+			// Create our GDI objects only once to avoid
+			// GDI leaks.
+			transparent	= CreatePen(PS_SOLID, 1, RGB(255, 0, 255));
+			green		= CreatePen(PS_SOLID, 1, RGB(0, 255, 0));
+		}
 		case WM_MOVE: {
 			// Gets the current overlay position and calculates where
 			// its client area begins. We then set the RuneScape window
@@ -312,9 +411,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			break;
 		}
 		case WM_COMMAND: {
-			int wmId = LOWORD(wParam);
-			// Parse the menu selections:
-			switch (wmId) {
+			switch (LOWORD(wParam)) {
 				case IDM_ABOUT:
 					DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
 					break;
@@ -350,13 +447,40 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 			break;
 		}
 		case WM_PAINT: {
-			PAINTSTRUCT ps;
-			HDC hdc = BeginPaint(hWnd, &ps);
-			// TODO: Add any drawing code that uses hdc here...
+			hdc = BeginPaint(hWnd, &ps);
+
+			// To speed up the painting process we use transparent
+			// colors and simply redraw everything we drawed last
+			// time. This effectivly clears the screen. Below we
+			// clear the mouse crosshair
+			SelectObject(hdc, transparent);
+			MoveToEx(hdc, 0, pmy, (LPPOINT) NULL);
+			LineTo(hdc, WIDTH, pmy);
+			MoveToEx(hdc, pmx, 0, (LPPOINT) NULL);
+			LineTo(hdc, pmx, HEIGHT);
+
+			// Update our previous mouse position to the current
+			// one. Used next painting cycle.
+			pmy = my;
+			pmx = mx;
+
+			// Select the appropriate pen and draw the crosshair
+			SelectObject(hdc, green);
+			MoveToEx(hdc, 0, my, (LPPOINT) NULL);
+			LineTo(hdc, WIDTH, my);
+			MoveToEx(hdc, mx, 0, (LPPOINT) NULL);
+			LineTo(hdc, mx, HEIGHT);
+
 			EndPaint(hWnd, &ps);
 			break;
 		}
 		case WM_DESTROY:
+			// Release our GDI objects to not cause leaks.
+			DeleteObject(transparent);
+			DeleteObject(green);
+
+			// Enable user interaction incase we were running
+			// a script. Also reset the RuneScape window style.
 			EnableWindow(runescapeClient, true);
 			SetWindowLong(runescapeWindow, GWL_STYLE, runescapeStyle);
 			PostQuitMessage(0);
