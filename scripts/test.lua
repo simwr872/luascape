@@ -42,7 +42,7 @@ abilitybar = {
 	}
 }
 
---client.move(260,260)
+client.move(260,260)
 while false do
 	client.click()
 	sleep(math.random()+1)

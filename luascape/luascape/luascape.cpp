@@ -117,40 +117,37 @@ float MouseDist(float x) {
 	return 1 - (tc*ts + -5 * tc + 5 * ts);
 }
 
-int LuaMove(lua_State *Lua) {
-	// TODO: Cleanup
+void Move(float x, float y, WPARAM wParam = 0) {
+	mx = x;
+	my = y;
+	PostMessage(runescapeClient, WM_MOUSEMOVE, wParam, MAKELPARAM(mx, my));
+	InvalidateRect(overlay, NULL, NULL);
+}
 
+void SmoothMove(float x, float y) {
+	float time = 500; // Change to separate function. Fitts law
+	vec2 start(mx, my);
+	vec2 goal(x, y);
+	vec2 difference = goal - start;
+	vec2 normal = goal.normal();
+	vec2 current;
+	float distance;
+	for (float i = 0; i < time; i++) {
+		distance = MouseDist(i / time);
+		current = goal - distance*difference;
+		Move(current.x, current.y);
+		Sleep(1);
+	}
+	Move(current.x, current.y);
+}
+
+int LuaMove(lua_State *Lua) {
 	// TODO: error checking
 	float x = lua_tonumber(Lua, -2);
 	float y = lua_tonumber(Lua, -1);
 	lua_pop(Lua, 2);
 
-	
-
-	int time = 500;
-	vec2 start = vec2(mx, my);
-	vec2 goal = vec2(x, y);
-	vec2 diff = goal - start;
-	vec2 norm = vec2(diff.y, -diff.x);
-	for (float i = 0; i < time; i++) {
-		float dist = MouseDist(i / time);
-		//float dev = mc->deviation(i / time);
-
-		vec2 loc = goal - diff * dist;
-		//loc = loc + norm * (dev / norm.length()) * 5;
-		mx = loc.x;
-		my = loc.y;
-		//SetCursorPos(mx, my);
-		PostMessage(runescapeClient, WM_MOUSEMOVE, 0, MAKELPARAM(mx, my));
-		InvalidateRect(overlay, NULL, NULL);
-		//UpdateWindow(overlay);
-		Sleep(1);
-	}
-	mx = x;
-	my = y;
-	PostMessage(runescapeClient, WM_MOUSEMOVE, 0, MAKELPARAM(mx, my));
-	InvalidateRect(overlay, NULL, NULL);
-
+	SmoothMove(x, y);
 	return 0;
 }
 
@@ -163,7 +160,7 @@ int LuaMove(lua_State *Lua) {
 //
 bool PressKey(char c) {
 	// Is the key actually valid?
-	if (0 < c || c > 127 || ascii[c] == 0x00) return false;
+	if (0 > c || c > 127 || ascii[c] == 0x00) return false;
 
 	// LPARAM OF WM_KEYDOWN 
 	// https://msdn.microsoft.com/en-us/library/ms646280(v=VS.85).aspx
