@@ -44,3 +44,8 @@ wchar_t * s2w(const char * orig) {
 	mbstowcs_s(&convertedChars, wcstring, newsize, orig, _TRUNCATE);
 	return wcstring;
 }
+
+char upper(char c) {
+	if (c <= 122 && c >= 97) c -= 32;
+	return c;
+}

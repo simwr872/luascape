@@ -42,8 +42,8 @@ abilitybar = {
 	}
 }
 
-client.move(260,260)
-while true do
+--client.move(260,260)
+while false do
 	client.click()
 	sleep(math.random()+1)
 	client.press("1")
@@ -53,8 +53,8 @@ while true do
 	client.press(" ")
 	sleep(math.random(17,18) + math.random()+1)
 end
-client.press("1")
-while true do end
+
+client.press("g");
 
 --print(inventory.slot[1][1][1])
 --client.move(798,1)

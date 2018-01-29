@@ -170,6 +170,7 @@
     <ClInclude Include="lvm.h" />
     <ClInclude Include="lzio.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="ScanCode.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="StringHelp.h" />
     <ClInclude Include="targetver.h" />

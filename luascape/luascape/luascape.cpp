@@ -10,6 +10,8 @@
 #include <thread>
 #include "Vec2.h"
 #include <bitset>
+#include <chrono>
+#include "ScanCode.h"
 using namespace std;
 
 #define MAX_LOADSTRING 100
@@ -35,7 +37,7 @@ long runescapeStyle;
 int scriptStatus = LUA_STOPPED;
 float mx, my, pmx, pmy;							// Previous and current mouse x & y
 
-bool DEBUG = true;
+bool DEBUG = false;
 
 
 
@@ -153,15 +155,15 @@ int LuaMove(lua_State *Lua) {
 }
 
 
+
 //
-//   FUNCTION: LuaPress(lua_State *Lua)
+//   FUNCTION: PressKey(char c)
 //
-//   PURPOSE:  Allows the script to press keys in RuneScape client.
+//   PURPOSE:  Sends a keypress to the RuneScape client.
 //
-int LuaPress(lua_State *Lua) {
-	// TODO: TYPE CHECK
-	string s = lua_tostring(Lua, -1);
-	lua_pop(Lua, 1);
+bool PressKey(char c) {
+	// Is the key actually valid?
+	if (0 < c || c > 127 || ascii[c] == 0x00) return false;
 
 	// LPARAM OF WM_KEYDOWN 
 	// https://msdn.microsoft.com/en-us/library/ms646280(v=VS.85).aspx
@@ -172,25 +174,44 @@ int LuaPress(lua_State *Lua) {
 	// never used as a key identifier. Key scan code list;
 	// https://msdn.microsoft.com/en-us/library/aa299374(v=vs.60).aspx
 
-	// TODO: CHANGE KEY SCAN CODE
+	// Convert the character to scan code and create both lparams
+	// for key- down & up and char.
+	bitset<8> scan(ascii[c]);
+	bitset<32> lparam1("00000000" + scan.to_string() + "0000000000000001");
+	bitset<32> lparam2("11000000" + scan.to_string() + "0000000000000001");
 
 	// For keydown the transition state and context code must be set
 	// to 0. We should only press keys one at a time so previos key
 	// state can also be set to 0. We are not sending an extended
 	// keypress (CTRL/ALT combo). Keydown always sends the capital
 	// letter while wm_char sends it in the correct case.
-	PostMessage(runescapeClient, WM_KEYDOWN, s.at(0), 0b00000000000111100000000000000001);
+	PostMessage(runescapeClient, WM_KEYDOWN, upper(c), lparam1.to_ullong());
 	// For every keydown message there is also a char message.
 	// LParam of this is exactly the same as for keydown.
-	PostMessage(runescapeClient, WM_CHAR, s.at(0), 0b00000000000111100000000000000001);
-	Sleep(rand() % (120 - 60 + 1) + 60);
+	PostMessage(runescapeClient, WM_CHAR, c, lparam1.to_ullong());
+	Sleep(rand() % (130 - 70 + 1) + 70);
 	// For key up the transition state, previous key state and
 	// repeat count must be set to 1. Context code must be 0.
-	PostMessage(runescapeClient, WM_KEYUP, s.at(0), 0b11000000000111100000000000000001);
+	PostMessage(runescapeClient, WM_KEYUP, upper(c), lparam2.to_ullong());
+
+	return true;
+}
+
+//
+//   FUNCTION: LuaPress(lua_State *Lua)
+//
+//   PURPOSE:  Allows the script to press keys in RuneScape client.
+//
+int LuaPress(lua_State *Lua) {
+	// TODO: TYPE CHECK
+	string s = lua_tostring(Lua, -1);
+	lua_pop(Lua, 1);
+	
+	char c = s.at(0);
+	if (!PressKey(c)) luaL_error(Lua, ("Character '"+to_string(c)+"' not yet implemented!").c_str());
 
 	return 0;
 }
-
 
 //
 //   FUNCTION: LuaClick(lua_State *Lua)
@@ -282,7 +303,6 @@ void RunLuaScript(string script) {
 
 
 
-
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmdLine, int nCmdShow) {
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
@@ -310,14 +330,28 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_LUASCAPE));
 
 	MSG msg;
-
+	int tt = 0;
 	// Main message loop:
 	while (GetMessage(&msg, nullptr, 0, 0)) {
 		if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg)) {
 			TranslateMessage(&msg);
 
 			if (DEBUG) {
-				cout << "-----" << endl;
+				if (msg.message == WM_KEYDOWN) {
+					int c = msg.wParam;
+					std::bitset<32> x(msg.lParam);
+					cout << c << " - ";
+					string s = "";
+					for (int i = 23; i >= 16; i--) {
+						s += to_string(x[i]);
+					}
+					std::bitset<80> a(s);
+					cout << hex << a.to_ulong() << ", " << ascii[c] << dec;
+					cout << endl;
+				}
+				/*cout << "-----" << endl;
+				int time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+				cout << time << endl;
 				cout << hex << msg.message << endl;
 				cout << hex << msg.wParam << dec << endl;
 
@@ -335,7 +369,7 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 				for (int i = 15; i >= 0; i--) {
 					cout << x[i];
 				}
-				cout << endl << "-----" << endl;
+				cout << endl << "-----" << endl;*/
 			}
 
 			DispatchMessage(&msg);
