@@ -29,8 +29,8 @@ WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
 
 HWND overlay;
 
-static const unsigned int WIDTH = 800;
-static const unsigned int HEIGHT = 600;
+static const int WIDTH = 800;
+static const int HEIGHT = 600;
 HWND runescapeWindow;
 HWND runescapeClient;
 long runescapeStyle;
@@ -53,6 +53,59 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 // within ours - to make it line up.
 RECT adjustedRect { 0, 0, WIDTH, HEIGHT };
 DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX);
+
+
+
+//
+//   FUNCTION: ReadPixel()
+//
+//   PURPOSE:  Reads a pixel color from the RuneScape client.
+//
+void ReadPixel(int x, int y, int* color) {
+	// Fetch the RuneScape client device context and
+	// create another one compatible with it.
+	HDC deviceContext = GetDC(runescapeClient);
+	HDC deviceContextCopy = CreateCompatibleDC(deviceContext);
+
+	// Define the bitmap. Height is inverted to make
+	// the origin top-left instead of bitmaps default
+	// bottom-left. 32 bitcount for all colors.
+	BITMAPINFO bitmap;
+	bitmap.bmiHeader.biSize = sizeof(bitmap.bmiHeader);
+	bitmap.bmiHeader.biWidth = WIDTH;
+	bitmap.bmiHeader.biHeight = -HEIGHT;
+	bitmap.bmiHeader.biPlanes = 1;
+	bitmap.bmiHeader.biBitCount = 32;
+	bitmap.bmiHeader.biCompression = BI_RGB;
+	bitmap.bmiHeader.biSizeImage = WIDTH * 4 * HEIGHT;
+	bitmap.bmiHeader.biClrUsed = 0;
+	bitmap.bmiHeader.biClrImportant = 0;
+
+	// Create and associate a bitpointer to the bits of
+	// of our bitmap. We then select our bitmap and
+	// copy all of RuneScape's buffer int ours.
+	BYTE* bitPointer;
+	HBITMAP hBitmap = CreateDIBSection(deviceContextCopy, &bitmap, DIB_RGB_COLORS, (void**) &bitPointer, NULL, NULL);
+	SelectObject(deviceContextCopy, hBitmap);
+	BitBlt(deviceContextCopy, 0, 0, WIDTH, HEIGHT, deviceContext, 0, 0, SRCCOPY);
+
+	// Parse the colors, each pixel has 4 bytes of
+	// information. (the 4th being alpha)
+	int index		= y * WIDTH + x;
+	int blue		= (int) bitPointer[index * 4 + 0];
+	int green		= (int) bitPointer[index * 4 + 1];
+	int red			= (int) bitPointer[index * 4 + 2];
+	color[0] = red;
+	color[1] = green;
+	color[2] = blue;
+
+	// Release RuneScape's device context aswell as
+	// cleaning up what we created.
+	ReleaseDC(runescapeClient, deviceContext);
+	DeleteDC(deviceContextCopy);
+	DeleteObject(hBitmap);
+
+}
 
 
 //
@@ -210,6 +263,31 @@ int LuaPress(lua_State *Lua) {
 	return 0;
 }
 
+
+//
+//   FUNCTION: LuaColor(lua_State *Lua)
+//
+//   PURPOSE:  Allows the script to read colors.
+//
+int LuaColor(lua_State *Lua) {
+	// TODO: error checking AND CLEANUP
+	float x = lua_tonumber(Lua, -2);
+	float y = lua_tonumber(Lua, -1);
+	lua_pop(Lua, 2);
+
+	int color[3];
+	ReadPixel(x, y, color);
+
+	lua_newtable(Lua);
+	for (int i = 0; i < 3; i++) {
+		lua_pushnumber(Lua, i+1);		// key
+		lua_pushnumber(Lua, color[i]);	// value
+		lua_settable(Lua, -3);
+	}
+
+	return 1;
+}
+
 //
 //   FUNCTION: LuaClick(lua_State *Lua)
 //
@@ -227,7 +305,7 @@ int LuaClick(lua_State *Lua) {
 	// WParam must be 0x0 which marks that no other key
 	// is being pressed
 	PostMessage(runescapeClient, WM_LBUTTONUP, 0, MAKELPARAM(mx, my));
-	cout << "click" << endl;
+
 	// Lua functions return how many values a function
 	// should return in the script. We return 0.
 	return 0;
@@ -237,6 +315,7 @@ static const luaL_Reg LuaLibrary[] = {
 	{ "click", LuaClick },
 	{ "move", LuaMove },
 	{ "press", LuaPress },
+	{ "color", LuaColor },
 	{ NULL, NULL }
 };
 
