@@ -1,0 +1,6 @@
+--client.move(275,565)
+--client.click()
+print(client.chat(1))
+print(client.chat(2))
+print(client.chat(3))
+print(client.chat(4))

@@ -1,5 +1,36 @@
-#pragma once
+#include "Keyboard.h"
 
+
+//
+//   FUNCTION: PressKey(char c)
+//
+//   PURPOSE:  Sends a keypress to the RuneScape client.
+//
+//   COMMENTS:
+//
+//        Only sends lowercase characters.
+//
+bool Keyboard::PressKey(char c) {
+	Key key(c);
+	if (!key.Valid()) return false;
+
+	// See header file for reasoning of wparam and lparam
+	PostMessage(client, WM_KEYDOWN, key.WParam(), key.LParam(WM_KEYDOWN));
+
+	// WM_CHAR message is generated when translating a posted
+	// WM_KEYDOWN message.
+	//PostMessage(client, WM_CHAR, key.WParam(), key.LParam(WM_CHAR));
+
+	Sleep(rand() % (130 - 70 + 1) + 70);
+
+	PostMessage(client, WM_KEYUP, key.WParam(), key.LParam(WM_KEYUP));
+
+	return true;
+}
+
+Keyboard::Keyboard(HWND _client) {
+	client = _client;
+}
 
 
 // Scan codes for every key in the standard 105-key ISO-layout
@@ -22,7 +53,7 @@
 
 // A lookup list translating an ascii number to the
 // corresponding scan code.
-int ascii[128] = {
+const int Keyboard::ascii[128] = {
 	0x00,	// 00	NUL		Null
 	0x00,	// 01	SOH		Start of Header
 	0x00,	// 02	STX		Start of Text

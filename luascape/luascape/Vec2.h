@@ -58,6 +58,6 @@ struct vec2 {
 // Operator defined outside struct definition to
 // handle the case where a scalar is multiplied
 // with a vector (s * vec2) as opposed to (vec2 * s)
-vec2 operator * (float s, vec2 v) {
+/*vec2 operator * (float s, vec2 v) {
 	return v * s;
-}
+}*/

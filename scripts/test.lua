@@ -10,6 +10,13 @@ inventory = {
 		{{731,291,766,322},{731,327,766,358},{731,363,766,394},{731,399,766,430},{731,435,766,466},{731,471,766,502},{731,507,766,538}}
 	}
 }
+function move(x, y)
+	client.move(x+math.random(-5,5), y+math.random(-5,5))
+end
+function click(x, y)
+	move(x, y)
+	client.click()
+end
 bank = {
 	close = {459,15,474,30},
 	preset1 = {112,373,143,400},
@@ -41,20 +48,130 @@ abilitybar = {
 		{493,376,522,405}
 	}
 }
+function didtransport()
+	c = client.color(339,545)
+	if c[1]+c[2]+c[3] > 600 then
+		return true
+	end
+	return false
+end
+function diddeplete()
+	c = client.color(312,543)
+	if c[1] > 150 and c[2] < 100 then
+		return true
+	end
+	return false
+end
+function porter()
+	a = abilitybar.slot[13]
+	click((a[3]+a[1])/2, (a[4]+a[2])/2)
+end
 
-t = client.color(631,253)
-print(t[1])
-print(t[2])
-print(t[3])
-while false do
-	client.click()
-	sleep(math.random()+1)
-	client.press("1")
-	sleep(math.random()+1)
-	client.press("1")
-	sleep(math.random()+1)
-	client.press(" ")
-	sleep(math.random(17,18) + math.random()+1)
+function kg5()
+move(275, 316)--bank
+while true do
+client.click()
+move(437,108)
+client.press("3")
+sleep(math.random(2,6)/10)
+client.click()
+sleep(math.random(2,6)/10)
+client.click()
+sleep(math.random(2,6)/10)
+client.esc()
+move((inventory.slot[1][1][1] + inventory.slot[1][1][3])/2,(inventory.slot[1][1][2] + inventory.slot[1][1][4])/2)
+client.rclick()
+sleep(math.random(2,6)/10)
+client.move((inventory.slot[1][1][1] + inventory.slot[1][1][3])/2,(inventory.slot[1][1][2] + inventory.slot[1][1][4])/2 + 60)
+client.click()
+sleep(math.random(10,15)/10)
+client.press(" ")
+move(275, 316)
+sleep(math.random(20,25)/10)
+end
+end
+
+
+
+move(275, 316)--bank
+while true do
+client.click()
+move(437,108)
+client.press("3")
+client.rclick()
+sleep(math.random(2,6)/10)
+client.move(437,108+43)
+client.click()
+sleep(math.random(2,6)/10)
+move(437,108)
+client.click()
+sleep(math.random(2,6)/10)
+client.click()
+sleep(math.random(2,6)/10)
+client.esc()
+move((inventory.slot[1][1][1] + inventory.slot[1][1][3])/2,(inventory.slot[1][1][2] + inventory.slot[1][1][4])/2)
+client.rclick()
+sleep(math.random(2,6)/10)
+client.move((inventory.slot[1][1][1] + inventory.slot[1][1][3])/2,(inventory.slot[1][1][2] + inventory.slot[1][1][4])/2 + 60)
+client.click()
+sleep(math.random(10,15)/10)
+client.press(" ")
+move(275, 316)
+sleep(math.random(70,75)/10)
+end
+
+
+
+
+
+--nw clockwise
+--276,145
+--340,109
+--274,169
+--219,107
+function mine()
+	move(276,145)
+	while true do
+		client.click()
+		while didtransport() do end
+		move(340,209)
+		while not didtransport() and not diddeplete() do end
+		sleep(math.random(2,6)/10)
+		if diddeplete() then
+			porter()
+			move(340,209)
+		end
+		
+		client.click()
+		while didtransport() do end
+		move(274,269)
+		while not didtransport() and not diddeplete() do end
+		sleep(math.random(2,6)/10)
+		if diddeplete() then
+			porter()
+			move(274,269)
+		end
+		
+		client.click()
+		while didtransport() do end
+		move(219,207)
+		while not didtransport() and not diddeplete() do end
+		sleep(math.random(2,6)/10)
+		if diddeplete() then
+			porter()
+			move(219,207)
+		end
+		
+		client.click()
+		while didtransport() do end
+		move(276,145)
+		while not didtransport() and not diddeplete() do end
+		sleep(math.random(2,6)/10)
+		if diddeplete() then
+			porter()
+			move(276,145)
+		end
+	end
 end
 
 --client.press("g");
