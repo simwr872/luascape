@@ -239,6 +239,49 @@ std::string Screen::ReadHover() {
 
 
 
+
+COLORREF Screen::ReadPixel(const int x, const int y) {
+	// Define the bitmap. We capture a 500x11 area in
+	// the top left corner. Characters can actually
+	// be 9x15 in size. But to save space and speed
+	// the crucial parts of a character can be stored
+	// in a 9x7 space (63 bits). The reason to capture
+	// 11 pixels in height is to handle the few
+	// clashes that occur (think i,j and 1,l...)
+	BITMAPINFO bitmap = CreateBitmap(1, 1);
+
+	// Create and associate a bitpointer to the bits of
+	// of our bitmap. We then select our bitmap and
+	// copy all of RuneScape's buffer into ours.
+	BYTE* bitPointer;
+
+	// Fetch the RuneScape client device context and
+	// create another one compatible with it. We must
+	// not occupy the context for too long. (blocking)
+	HDC deviceContext = GetDC(client);
+	HDC deviceContextCopy = CreateCompatibleDC(deviceContext);
+
+	HBITMAP hBitmap = CreateDIBSection(deviceContextCopy, &bitmap, DIB_RGB_COLORS, (void**) &bitPointer, NULL, NULL);
+	SelectObject(deviceContextCopy, hBitmap);
+	// Top left text is offset by some set pixels.
+	BitBlt(deviceContextCopy, 0, 0, 1, 1, deviceContext, x, y, SRCCOPY);
+
+	// Immediatly release RuneScape's device context.
+	ReleaseDC(client, deviceContext);
+	DeleteObject(hBitmap);
+
+	COLORREF c = Color(bitPointer, 0, 0, 1);
+
+	// Delete any context we created.
+	DeleteDC(deviceContextCopy);
+
+	return c;
+}
+
+
+
+
+
 Screen::Screen(const HWND _client) {
 	client = _client;
 }

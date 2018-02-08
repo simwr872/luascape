@@ -24,6 +24,7 @@ private:
 
 public:
 	std::string ReadHover();
+	COLORREF ReadPixel(const int x, const int y);
 	Screen(HWND _client);
 	Screen() {};
 	~Screen() {};

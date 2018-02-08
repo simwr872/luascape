@@ -111,9 +111,12 @@ OPENFILENAME ScriptFiles(HWND hWnd) {
 }
 
 int LuaMove(lua_State *Lua) {
-	// TODO: error checking
 	float x = lua_tonumber(Lua, -2);
+	if(lua_type(Lua, -2) != LUA_TNUMBER) luaL_argerror(Lua, 1, "Expected number.");
+
 	float y = lua_tonumber(Lua, -1);
+	if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 2, "Expected number.");
+
 	lua_pop(Lua, 2);
 
 	mouse.SmoothMove(x, y);
@@ -128,28 +131,30 @@ int LuaMove(lua_State *Lua) {
 //   PURPOSE:  Allows the script to press keys in RuneScape client.
 //
 int LuaPress(lua_State *Lua) {
-	// TODO: TYPE CHECK
-	string s = lua_tostring(Lua, -1);
+	int type = lua_type(Lua, -1);
+	char c;
+	string s;
+	switch (lua_type(Lua, -1)) {
+		case LUA_TNUMBER:
+			c = lua_tonumber(Lua, -1);
+			break;
+		case LUA_TSTRING:
+			s = lua_tostring(Lua, -1);
+			c = s.at(0);
+			break;
+		default:
+			luaL_argerror(Lua, 1, "Expected string or number.");
+	}
 	lua_pop(Lua, 1);
-	
-	char c = s.at(0);
+
 	if (!keyboard.PressKey(c)) luaL_error(Lua, ("Character '"+to_string(c)+"' not yet implemented!").c_str());
 
 	return 0;
 }
 
-//
-//   FUNCTION: LuaPress(lua_State *Lua)
-//
-//   PURPOSE:  Allows the script to press keys in RuneScape client.
-//
+
 int LuaHover(lua_State *Lua) {
-	// TODO: TYPE CHECK
-	int l = lua_tonumber(Lua, -1);
-	lua_pop(Lua, 1);
-
 	lua_pushstring(Lua, screen.ReadHover().c_str());
-
 	return 1;
 }
 
@@ -163,11 +168,44 @@ int LuaClick(lua_State *Lua) {
 	return 0;
 }
 
+
+int LuaDragFind(lua_State *Lua) {
+	// TODO: error checking
+	float x = lua_tonumber(Lua, -3);
+	float y = lua_tonumber(Lua, -2);
+	string s = lua_tostring(Lua, -1);
+	lua_pop(Lua, 3);
+
+	vec2 v = mouse.FindMove(x, y, s, screen);
+	lua_pushnumber(Lua, v.x);
+	lua_pushnumber(Lua, v.y);
+
+	return 2;
+}
+
+int LuaPixel(lua_State *Lua) {
+	float x = lua_tonumber(Lua, -2);
+	if (lua_type(Lua, -2) != LUA_TNUMBER) luaL_argerror(Lua, 1, "Expected number.");
+
+	float y = lua_tonumber(Lua, -1);
+	if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 2, "Expected number.");
+
+	lua_pop(Lua, 2);
+
+	COLORREF c = screen.ReadPixel(x, y);
+	lua_pushnumber(Lua, GetRValue(c));
+	lua_pushnumber(Lua, GetGValue(c));
+	lua_pushnumber(Lua, GetBValue(c));
+	return 3;
+}
+
 static const luaL_Reg LuaLibrary[] = {
 	{ "click", LuaClick },
 	{ "hover", LuaHover },
 	{ "move", LuaMove },
 	{ "press", LuaPress },
+	{ "pixel", LuaPixel },
+	{ "drag_find", LuaDragFind },
 	{ NULL, NULL }
 };
 

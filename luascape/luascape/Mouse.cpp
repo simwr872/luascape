@@ -50,6 +50,32 @@ void Mouse::SmoothMove(float x, float y) {
 	Move(current.x, current.y);
 }
 
+
+vec2 Mouse::FindMove(float x, float y, std::string find, Screen& screen) {
+	float time = 3000; // Change to separate function. Fitts law
+	vec2 goal(x, y);
+	vec2 difference = goal - pos;
+	vec2 normal = goal.normal();
+	vec2 current;
+	float distance;
+	for (float i = 0; i < time; i++) {
+		if (screen.ReadHover().find(find) != std::string::npos) {
+			return current;
+		}
+		int start = std::chrono::duration_cast< std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+		distance = MouseDist(i / time);
+		current = goal - difference*distance;
+		Move(current.x, current.y);
+		int end;
+		do { end = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count(); } while (end - start<1);
+		if (end - start != 1) {
+			i += (end - start) - 1;
+		}
+	}
+	return vec2();
+}
+
+
 void Mouse::Paint(HDC hdc, HPEN transparent, HPEN green) {
 	// To speed up the painting process we use transparent
 	// colors and simply redraw everything we drawed last
