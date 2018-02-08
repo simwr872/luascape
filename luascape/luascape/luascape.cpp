@@ -143,37 +143,12 @@ int LuaPress(lua_State *Lua) {
 //
 //   PURPOSE:  Allows the script to press keys in RuneScape client.
 //
-int LuaChat(lua_State *Lua) {
+int LuaHover(lua_State *Lua) {
 	// TODO: TYPE CHECK
 	int l = lua_tonumber(Lua, -1);
 	lua_pop(Lua, 1);
 
-	lua_pushstring(Lua, screen.ReadChat(l).c_str());
-
-	return 1;
-}
-
-
-//
-//   FUNCTION: LuaColor(lua_State *Lua)
-//
-//   PURPOSE:  Allows the script to read colors.
-//
-int LuaColor(lua_State *Lua) {
-	// TODO: error checking AND CLEANUP
-	float x = lua_tonumber(Lua, -2);
-	float y = lua_tonumber(Lua, -1);
-	lua_pop(Lua, 2);
-
-	int color[3];
-	screen.ReadPixel(x, y, color);
-
-	lua_newtable(Lua);
-	for (int i = 0; i < 3; i++) {
-		lua_pushnumber(Lua, i+1);		// key
-		lua_pushnumber(Lua, color[i]);	// value
-		lua_settable(Lua, -3);
-	}
+	lua_pushstring(Lua, screen.ReadHover().c_str());
 
 	return 1;
 }
@@ -188,27 +163,11 @@ int LuaClick(lua_State *Lua) {
 	return 0;
 }
 
-int LuaRClick(lua_State *Lua) {
-	PostMessage(runescapeClient, WM_RBUTTONDOWN, MK_RBUTTON, MAKELPARAM(mx, my));
-	Sleep(rand() % (120 - 60 + 1) + 60);
-	PostMessage(runescapeClient, WM_RBUTTONUP, 0, MAKELPARAM(mx, my));
-
-	return 0;
-}
-
-int LuaEsc(lua_State *Lua) {
-	keyboard.PressKey(27);
-	return 0;
-}
-
 static const luaL_Reg LuaLibrary[] = {
 	{ "click", LuaClick },
-	{ "esc", LuaEsc },
-	{ "chat", LuaChat },
-	{ "rclick", LuaRClick },
+	{ "hover", LuaHover },
 	{ "move", LuaMove },
 	{ "press", LuaPress },
-	{ "color", LuaColor },
 	{ NULL, NULL }
 };
 
