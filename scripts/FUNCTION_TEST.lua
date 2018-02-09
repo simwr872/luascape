@@ -53,7 +53,7 @@ function full()
 	return r > 90
 end
 
-while true do
+while false do
 	bank()
 	goto_fish()
 	while not full() do
@@ -61,6 +61,11 @@ while true do
 		sleep(6)
 		while fishing() do sleep(3) end
 	end
+end
+
+while true do
+	print(client.hover())
+	sleep(1)
 end
 
 

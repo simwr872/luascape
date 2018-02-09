@@ -1,7 +1,6 @@
 #pragma once
 #include <Windows.h>
 #include <string>
-#include <bitset>
 #include <map>
 #include <algorithm>
 class Screen {
