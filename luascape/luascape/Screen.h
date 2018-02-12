@@ -12,7 +12,6 @@ private:
 	static const std::map<char, long long> chars;
 	static std::map<char, long long> GenerateMap();
 
-	BITMAPINFO CreateBitmap(const int x, const int y);
 	COLORREF Color(const BYTE * bitPointer, const int x, const int y, const int width);
 	bool Match(const COLORREF & color);
 	bool NextCharacter(const BYTE * bitPointer, int & _x, const int _y, const int width);
@@ -23,7 +22,7 @@ private:
 
 public:
 	std::string ReadHover();
-	COLORREF ReadPixel(const int x, const int y);
+	void CaptureArea(BYTE * bitPointer, const int x, const int y, const int w, const int h);
 	Screen(HWND _client);
 	Screen() {};
 	~Screen() {};

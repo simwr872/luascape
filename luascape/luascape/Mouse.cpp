@@ -59,10 +59,10 @@ vec2 Mouse::FindMove(float x, float y, std::string find, Screen& screen) {
 	vec2 current;
 	float distance;
 	for (float i = 0; i < time; i++) {
+		int start = std::chrono::duration_cast< std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		if (screen.ReadHover().find(find) != std::string::npos) {
 			return current;
 		}
-		int start = std::chrono::duration_cast< std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 		distance = MouseDist(i / time);
 		current = goal - difference*distance;
 		Move(current.x, current.y);

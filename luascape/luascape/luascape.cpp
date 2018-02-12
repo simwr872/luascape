@@ -110,13 +110,23 @@ OPENFILENAME ScriptFiles(HWND hWnd) {
 	return ofn;
 }
 
+//
+//   FUNCTION: LuaMove(lua_State *Lua)
+//
+//   PURPOSE:  Allows the script to move the mouse inside the RuneScape client.
+//
 int LuaMove(lua_State *Lua) {
+	// Fetch both coordinates and assert that they
+	// are a number type and also in a valid range.
 	float x = lua_tonumber(Lua, -2);
 	if(lua_type(Lua, -2) != LUA_TNUMBER) luaL_argerror(Lua, 1, "Expected number.");
+	if(x < 0 || x > WIDTH - 1) luaL_argerror(Lua, 1, "Out of bounds.");
 
 	float y = lua_tonumber(Lua, -1);
 	if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 2, "Expected number.");
+	if (x < 0 || x > HEIGHT - 1) luaL_argerror(Lua, 2, "Out of bounds.");
 
+	// Pop the 2 values from the stack for cleanup.
 	lua_pop(Lua, 2);
 
 	mouse.SmoothMove(x, y);
@@ -130,10 +140,16 @@ int LuaMove(lua_State *Lua) {
 //
 //   PURPOSE:  Allows the script to press keys in RuneScape client.
 //
+//   COMMENTS:
+//
+//        Function will handle both ascii numbers and strings.
+//
 int LuaPress(lua_State *Lua) {
 	int type = lua_type(Lua, -1);
 	char c;
 	string s;
+	// Assert that the type is either a string
+	// or a number and convert to a char.
 	switch (lua_type(Lua, -1)) {
 		case LUA_TNUMBER:
 			c = lua_tonumber(Lua, -1);
@@ -153,7 +169,14 @@ int LuaPress(lua_State *Lua) {
 }
 
 
+//
+//   FUNCTION: LuaHover(lua_State *Lua)
+//
+//   PURPOSE:  Allows the script to read RuneScapes hover text.
+//
 int LuaHover(lua_State *Lua) {
+	// We push the result to the stack and return
+	// 1 to indicate 1 return value.
 	lua_pushstring(Lua, screen.ReadHover().c_str());
 	return 1;
 }
@@ -183,20 +206,64 @@ int LuaDragFind(lua_State *Lua) {
 	return 2;
 }
 
-int LuaPixel(lua_State *Lua) {
-	float x = lua_tonumber(Lua, -2);
+//
+//   FUNCTION: LuaCapture(lua_State *Lua)
+//
+//   PURPOSE:  Allows the script to read pixels from the RuneScape client.
+//
+int LuaCapture(lua_State *Lua) {
+	// Fetch all parameters and assert that they
+	// are the correct type and within bounds.
+	float x = lua_tonumber(Lua, -4);
 	if (lua_type(Lua, -2) != LUA_TNUMBER) luaL_argerror(Lua, 1, "Expected number.");
+	if (x < 0 || x > WIDTH - 1) luaL_argerror(Lua, 1, "Out of bounds.");
 
-	float y = lua_tonumber(Lua, -1);
+	float y = lua_tonumber(Lua, -3);
 	if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 2, "Expected number.");
+	if (x < 0 || x > HEIGHT - 1) luaL_argerror(Lua, 2, "Out of bounds.");
 
-	lua_pop(Lua, 2);
+	float w = lua_tonumber(Lua, -2);
+	if (lua_type(Lua, -2) != LUA_TNUMBER) luaL_argerror(Lua, 3, "Expected number.");
+	if (w < 0 || w > WIDTH || x + w > WIDTH) luaL_argerror(Lua, 3, "Out of bounds.");
 
-	COLORREF c = screen.ReadPixel(x, y);
-	lua_pushnumber(Lua, GetRValue(c));
-	lua_pushnumber(Lua, GetGValue(c));
-	lua_pushnumber(Lua, GetBValue(c));
-	return 3;
+	float h = lua_tonumber(Lua, -1);
+	if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 4, "Expected number.");
+	if (h < 0 || h > HEIGHT || y + h > HEIGHT) luaL_argerror(Lua, 4, "Out of bounds.");
+
+	// Pop the variables from the stack to cleanup
+	lua_pop(Lua, 4);
+
+	BYTE* bitPointer = (BYTE*) malloc(4 * w*h);
+	screen.CaptureArea(bitPointer, x, y, w, h);
+
+	// Colors are stored as a decimal value in tables
+	// that can be accessed from within the script as
+	// t[x][y]. Furthermore to separate r, g, b values
+	// one must shift 16, 8 and 0 bits respectivly.
+	lua_newtable(Lua);
+	for (int _x = 0; _x < w; _x++) {
+		// Since lua tables start at index 1 we must
+		// offset by one.
+		lua_pushnumber(Lua, _x + 1);
+		lua_newtable(Lua);
+
+		for (int _y = 0; _y < h; _y++) {
+			lua_pushnumber(Lua, _y+1);
+
+			int index	= _y*w + _x;
+			int blue	= (int) bitPointer[index * 4 + 0];
+			int green	= (int) bitPointer[index * 4 + 1] << 8;
+			int red		= (int) bitPointer[index * 4 + 2] << 16;
+
+			lua_pushnumber(Lua, red + green + blue);
+			lua_settable(Lua, -3);
+		}
+		lua_settable(Lua, -3);
+	}
+	delete bitPointer;
+
+	// We are returning one value (the (perhaps big) table)
+	return 1;
 }
 
 static const luaL_Reg LuaLibrary[] = {
@@ -204,7 +271,7 @@ static const luaL_Reg LuaLibrary[] = {
 	{ "hover", LuaHover },
 	{ "move", LuaMove },
 	{ "press", LuaPress },
-	{ "pixel", LuaPixel },
+	{ "capture", LuaCapture },
 	{ "drag_find", LuaDragFind },
 	{ NULL, NULL }
 };
