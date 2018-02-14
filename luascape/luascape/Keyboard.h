@@ -9,10 +9,10 @@ private:
 		char c;
 		int repeat, scan, extended, reserved, context, previous, transition;
 		
-		Key(char _c) { c = _c; }
+		Key(const char _c) { c = _c; }
 		bool Valid() { return !(0 > c || c > 127 || ascii[c] == 0x00); }
 
-		int LParam(int code) {
+		int LParam(const int code) {
 			// LPARAM OF WM_KEYDOWN 
 			// https://msdn.microsoft.com/en-us/library/ms646280(v=VS.85).aspx
 			// |Transition|Previous |Context|Reserved|Extended|Scan    |Repeat count    |
@@ -48,8 +48,8 @@ private:
 		}
 	};
 public:
-	bool PressKey(char c);
-	Keyboard(HWND _client);
+	bool PressKey(const char c);
+	Keyboard(const HWND _client);
 	Keyboard() {};
 	~Keyboard() {};
 };

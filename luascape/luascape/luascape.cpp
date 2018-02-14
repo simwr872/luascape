@@ -118,18 +118,22 @@ OPENFILENAME ScriptFiles(HWND hWnd) {
 int LuaMove(lua_State *Lua) {
 	// Fetch both coordinates and assert that they
 	// are a number type and also in a valid range.
-	float x = lua_tonumber(Lua, -2);
-	if(lua_type(Lua, -2) != LUA_TNUMBER) luaL_argerror(Lua, 1, "Expected number.");
+	int x = lua_tonumber(Lua, -3);
+	if(lua_type(Lua, -3) != LUA_TNUMBER) luaL_argerror(Lua, 1, "Expected number.");
 	if(x < 0 || x > WIDTH - 1) luaL_argerror(Lua, 1, "Out of bounds.");
 
-	float y = lua_tonumber(Lua, -1);
-	if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 2, "Expected number.");
-	if (x < 0 || x > HEIGHT - 1) luaL_argerror(Lua, 2, "Out of bounds.");
+	int y = lua_tonumber(Lua, -2);
+	if (lua_type(Lua, -2) != LUA_TNUMBER) luaL_argerror(Lua, 2, "Expected number.");
+	if (y < 0 || y > HEIGHT - 1) luaL_argerror(Lua, 2, "Out of bounds.");
+
+	int size = lua_tonumber(Lua, -1);
+	if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 3, "Expected number.");
+	if (size < 0 || size > max(HEIGHT, WIDTH)) luaL_argerror(Lua, 3, "Out of bounds.");
 
 	// Pop the 2 values from the stack for cleanup.
-	lua_pop(Lua, 2);
+	lua_pop(Lua, 3);
 
-	mouse.SmoothMove(x, y);
+	mouse.SmoothMove(x, y, size);
 
 	return 0;
 }
@@ -189,21 +193,6 @@ int LuaHover(lua_State *Lua) {
 int LuaClick(lua_State *Lua) {
 	mouse.Click();
 	return 0;
-}
-
-
-int LuaDragFind(lua_State *Lua) {
-	// TODO: error checking
-	float x = lua_tonumber(Lua, -3);
-	float y = lua_tonumber(Lua, -2);
-	string s = lua_tostring(Lua, -1);
-	lua_pop(Lua, 3);
-
-	vec2 v = mouse.FindMove(x, y, s, screen);
-	lua_pushnumber(Lua, v.x);
-	lua_pushnumber(Lua, v.y);
-
-	return 2;
 }
 
 //
@@ -272,7 +261,6 @@ static const luaL_Reg LuaLibrary[] = {
 	{ "move", LuaMove },
 	{ "press", LuaPress },
 	{ "capture", LuaCapture },
-	{ "drag_find", LuaDragFind },
 	{ NULL, NULL }
 };
 

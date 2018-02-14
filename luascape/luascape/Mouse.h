@@ -6,17 +6,22 @@
 #include "Screen.h"
 class Mouse {
 private:
+	const static int FITTS_A = 100;
+	const static int FITTS_B = 200;
+
 	HWND client;
 	HWND overlay;
 	vec2 prev;
 	vec2 pos;
 	float MouseDist(float x);
+	int FittsLaw(const float distance, const int size);
+	vec2 Vec2Lerp(vec2 from, vec2 to, float percent);
+	void Move(const int x, const int y, const WPARAM wParam);
+	float MouseDeviation(vec2 p1, vec2 p2, float x);
 public:
 	void Click();
-	void Move(float x, float y, WPARAM wParam);
-	void SmoothMove(float x, float y);
-	vec2 FindMove(float x, float y, std::string find, Screen& screen);
-	void Paint(HDC hdc, HPEN transparent, HPEN green);
+	void SmoothMove(const int x, const int y, const int size);
+	void Paint(const HDC& hdc, const HPEN& transparent, const HPEN& color);
 	Mouse(HWND _client, HWND _overlay);
 	Mouse() {};
 	~Mouse() {};

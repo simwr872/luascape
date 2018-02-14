@@ -6,5 +6,10 @@ function dec2rgb(dec)
 end
 
 g = client.capture(0,0,1,2)
-r,g,b = dec2rgb(g[1][3])
+r,g,b = dec2rgb(g[1][2])
 print(r, g, b)
+while true do
+client.move(math.random(0,799),math.random(0,599),1)
+end
+--client.move(613,140,15)
+--client.move(0,0,1)

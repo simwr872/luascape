@@ -10,7 +10,7 @@
 //
 //        Only sends lowercase characters.
 //
-bool Keyboard::PressKey(char c) {
+bool Keyboard::PressKey(const char c) {
 	Key key(c);
 	if (!key.Valid()) return false;
 
@@ -28,7 +28,7 @@ bool Keyboard::PressKey(char c) {
 	return true;
 }
 
-Keyboard::Keyboard(HWND _client) {
+Keyboard::Keyboard(const HWND _client) {
 	client = _client;
 }
 
