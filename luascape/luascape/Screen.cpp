@@ -278,10 +278,10 @@ std::string Screen::ReadHover() {
 	// skipped, aswell as the 1 pixel skipped at
 	// the bottom is used to identify clashing
 	// characters.
-	while (NextCharacter(bitPointer, x, 3, 500)) {
+	while (NextCharacter(bitPointer, x, 3, w)) {
 		if (x - ox >= 4) s += ' ';
-		long long c = GetCharacter(bitPointer, x, 3, 500);
-		s += IdentifyCharacter(bitPointer, x, c, 500);
+		long long c = GetCharacter(bitPointer, x, 3, w);
+		s += IdentifyCharacter(bitPointer, x, c, w);
 		ox = x;
 	}
 	delete bitPointer;

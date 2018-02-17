@@ -4,11 +4,12 @@
 #include <chrono>
 #include <string>
 #include "Screen.h"
+#define MOUSE_LEFT 1
+#define MOUSE_RIGHT 2
+#define FITTS_A 100
+#define FITTS_B 200
 class Mouse {
 private:
-	const static int FITTS_A = 100;
-	const static int FITTS_B = 200;
-
 	HWND client;
 	HWND overlay;
 	vec2 prev;
@@ -19,7 +20,7 @@ private:
 	void Move(const int x, const int y, const WPARAM wParam);
 	float MouseDeviation(vec2 p1, vec2 p2, float x);
 public:
-	void Click();
+	void Click(int button);
 	void SmoothMove(const int x, const int y, const int size);
 	void Paint(const HDC& hdc, const HPEN& transparent, const HPEN& color);
 	Mouse(HWND _client, HWND _overlay);

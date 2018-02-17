@@ -191,7 +191,18 @@ int LuaHover(lua_State *Lua) {
 //   PURPOSE:  Allows the script to click the RuneScape client.
 //
 int LuaClick(lua_State *Lua) {
-	mouse.Click();
+	int button;
+	if (lua_gettop(Lua) < 1) {
+		button = MOUSE_LEFT;
+	} else if (lua_type(Lua, -1) != LUA_TNUMBER) {
+		luaL_argerror(Lua, 1, "Expected number.");
+	} else {
+		button = lua_tonumber(Lua, -1);
+		cout << button << endl;
+		if (button != MOUSE_LEFT && button != MOUSE_RIGHT) luaL_argerror(Lua, 1, "Button must be left (1) or right (2).");
+	}
+
+	mouse.Click(button);
 	return 0;
 }
 

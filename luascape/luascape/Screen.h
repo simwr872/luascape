@@ -3,11 +3,11 @@
 #include <string>
 #include <map>
 #include <algorithm>
+#define CHAR_WIDTH 9
+#define CHAR_HEIGHT 7
 class Screen {
 private:
 	HWND client;
-	static const int CHAR_WIDTH = 9;
-	static const int CHAR_HEIGHT = 7;
 	static const COLORREF colors[];
 	static const std::map<char, long long> chars;
 	static std::map<char, long long> GenerateMap();

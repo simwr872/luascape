@@ -1,19 +1,23 @@
 #include "Mouse.h"
 #include <iostream>
 #include <random>
+#include <cmath>
 
-void Mouse::Click() {
+void Mouse::Click(int button) {
 	// Send a click message to the RuneScape client at
 	// our current mouse coordinates with a delay before
 	// we release the mouse. WParam must be set to
 	// MK_LBUTTON (0x1) which marks that the left button
-	// is being held
-	PostMessage(client, WM_LBUTTONDOWN, MK_LBUTTON, MAKELPARAM(pos.x, pos.y));
+	// is being held OR (0x2) which marks right button.
+	// The msg is either 201 and later 202 for left
+	// up/down. Or 204 and 205 for the right button.
+	int bs = std::pow(button, 2);
+	PostMessage(client, 0x0200 | bs, button, MAKELPARAM(pos.x, pos.y));
 	// TODO: lognormal distribution AND record how long clicks actually are.
 	Sleep(rand() % (120 - 60 + 1) + 60);
 	// WParam must be 0x0 which marks that no other key
 	// is being pressed
-	PostMessage(client, WM_LBUTTONUP, 0, MAKELPARAM(pos.x, pos.y));
+	PostMessage(client, (0x0200 | bs) + 1, 0, MAKELPARAM(pos.x, pos.y));
 }
 
 void Mouse::Move(const int x, const int y, const WPARAM wParam = 0) {
