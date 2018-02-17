@@ -17,3 +17,4 @@ while true do
 		client.click()
 	end
 end
+

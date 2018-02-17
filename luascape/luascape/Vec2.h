@@ -1,5 +1,6 @@
 #pragma once
 #include <math.h>
+#include <string>
 
 // Defines how a 2D vector behaves in space. Methods
 // implemented are for basic manipulation and comparing.
@@ -24,7 +25,11 @@ struct vec2 {
 		return vec2(y, -x);
 	}
 	vec2 normalize() {
-		return *this / this->length();
+		if (this->length() == 0) {
+			return vec2();
+		} else {
+			return *this / this->length();
+		}
 	}
 	vec2 operator * (float s) {
 		return vec2(x*s, y*s);
@@ -52,6 +57,9 @@ struct vec2 {
 	}
 	bool operator == (vec2 v) {
 		return x == v.x && y == v.y;
+	}
+	std::string to_string()  {
+		return std::to_string((*this).x) + ", " + std::to_string((*this).y);
 	}
 };
 

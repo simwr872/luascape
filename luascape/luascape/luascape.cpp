@@ -298,9 +298,7 @@ void RunLuaScript(string script) {
 	// Disables the user from actually interacting with
 	// the RuneScape client. Otherwise we might send two
 	// different mouse locations at once(!).
-	//EnableWindow(runescapeClient, false);
-	// Declare the script state as running
-	scriptStatus = LUA_RUNNING;
+	EnableWindow(runescapeClient, false);
 
 	// Create a new lua state and load all default libraries.
 	// Some libraries have been disabled such as parts of the
@@ -528,13 +526,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 					if (script.length() != 0) {
 						if (scriptStatus == LUA_RUNNING) scriptStatus = LUA_STOPPING;
 						while (scriptStatus != LUA_STOPPED) {}
+						// Declare the script state as running
+						scriptStatus = LUA_RUNNING;
 						thread client(RunLuaScript, script);
 						client.detach();
+						InvalidateRect(hWnd, 0, 0);
 					}
 					break;
 				}
 				case IDM_SCRIPT_STOP: {
 					if (scriptStatus == LUA_RUNNING) scriptStatus = LUA_STOPPING;
+					InvalidateRect(hWnd, 0, 0);
 				}
 				default:
 					return DefWindowProc(hWnd, message, wParam, lParam);
