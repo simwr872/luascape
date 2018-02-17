@@ -40,7 +40,6 @@ int scriptStatus = LUA_STOPPED;
 float mx, my, pmx, pmy;							// Previous and current mouse x & y
 
 
-
 // Forward declarations of functions included in this code module:
 ATOM                RegisterOverlayClass(HINSTANCE hInstance);
 BOOL                InitInstance(HINSTANCE, int);
@@ -53,7 +52,6 @@ INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 // within ours - to make it line up.
 RECT adjustedRect { 0, 0, WIDTH, HEIGHT };
 DWORD style = WS_OVERLAPPEDWINDOW & ~(WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_SIZEBOX);
-
 
 
 //
@@ -546,7 +544,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
 		case WM_PAINT: {
 			hdc = BeginPaint(hWnd, &ps);
 
-			mouse.Paint(hdc, transparent, green);
+			// We can always clear the cursor but only draw during script.
+			mouse.PaintClear(hdc, transparent);
+			if (scriptStatus == LUA_RUNNING) mouse.Paint(hdc, green);
 
 			EndPaint(hWnd, &ps);
 			break;

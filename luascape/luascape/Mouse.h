@@ -22,7 +22,8 @@ private:
 public:
 	void Click(int button);
 	void SmoothMove(const int x, const int y, const int size);
-	void Paint(const HDC& hdc, const HPEN& transparent, const HPEN& color);
+	void PaintClear(const HDC & hdc, const HPEN & transparent);
+	void Paint(const HDC& hdc, const HPEN& color);
 	Mouse(HWND _client, HWND _overlay);
 	Mouse() {};
 	~Mouse() {};

@@ -131,7 +131,7 @@ void Mouse::SmoothMove(const int x, const int y, const int size) {
 }
 
 
-void Mouse::Paint(const HDC& hdc, const HPEN& transparent, const HPEN& color) {
+void Mouse::PaintClear(const HDC& hdc, const HPEN& transparent) {
 	// To speed up the painting process we use transparent
 	// colors and simply redraw everything we drawed last
 	// time. This effectivly clears the screen. Below we
@@ -141,7 +141,10 @@ void Mouse::Paint(const HDC& hdc, const HPEN& transparent, const HPEN& color) {
 	LineTo(hdc, 800, prev.y);
 	MoveToEx(hdc, prev.x, 0, (LPPOINT) NULL);
 	LineTo(hdc, prev.x, 600);
+}
 
+
+void Mouse::Paint(const HDC& hdc, const HPEN& color) {
 	// Update our previous mouse position to the current
 	// one. Used next painting cycle.
 	prev = pos;
