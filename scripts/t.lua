@@ -9,7 +9,7 @@ function sleep(n)
 	while os.clock() - t <= n do end
 end
 
-client.move(280,280,4)
+client.move(275,300,4)
 while true do
 	sleep(6)
 	if string.find(client.hover(), "Tune") then

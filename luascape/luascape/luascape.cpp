@@ -116,20 +116,30 @@ OPENFILENAME ScriptFiles(HWND hWnd) {
 int LuaMove(lua_State *Lua) {
 	// Fetch both coordinates and assert that they
 	// are a number type and also in a valid range.
-	int x = lua_tonumber(Lua, -3);
-	if(lua_type(Lua, -3) != LUA_TNUMBER) luaL_argerror(Lua, 1, "Expected number.");
+	int stackSize = lua_gettop(Lua);
+	if (stackSize != 2 && stackSize != 3) luaL_error(Lua, "Requires 2 or 3 arguments.");
+
+	int x = lua_tonumber(Lua, -stackSize);
+	if(lua_type(Lua, -stackSize) != LUA_TNUMBER) luaL_argerror(Lua, 1, "Expected number.");
 	if(x < 0 || x > WIDTH - 1) luaL_argerror(Lua, 1, "Out of bounds.");
+	stackSize--;
 
-	int y = lua_tonumber(Lua, -2);
-	if (lua_type(Lua, -2) != LUA_TNUMBER) luaL_argerror(Lua, 2, "Expected number.");
+	int y = lua_tonumber(Lua, -stackSize);
+	if (lua_type(Lua, -stackSize) != LUA_TNUMBER) luaL_argerror(Lua, 2, "Expected number.");
 	if (y < 0 || y > HEIGHT - 1) luaL_argerror(Lua, 2, "Out of bounds.");
+	stackSize--;
 
-	int size = lua_tonumber(Lua, -1);
-	if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 3, "Expected number.");
-	if (size < 0 || size > max(HEIGHT, WIDTH)) luaL_argerror(Lua, 3, "Out of bounds.");
+	// If user doesn't specify a size when moving,
+	// default of 50 is used.
+	int size = 50;
+	if (stackSize != 0) {
+		size = lua_tonumber(Lua, -1);
+		if (lua_type(Lua, -1) != LUA_TNUMBER) luaL_argerror(Lua, 3, "Expected number.");
+		if (size < 0 || size > max(HEIGHT, WIDTH)) luaL_argerror(Lua, 3, "Out of bounds.");
+	}
 
-	// Pop the 2 values from the stack for cleanup.
-	lua_pop(Lua, 3);
+	// Pop the 3/2 values from the stack for cleanup.
+	lua_pop(Lua, (stackSize + 2));
 
 	mouse.SmoothMove(x, y, size);
 
@@ -335,7 +345,6 @@ int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPWSTR lpCmd
 	UNREFERENCED_PARAMETER(hPrevInstance);
 	UNREFERENCED_PARAMETER(lpCmdLine);
 
-	// TODO: Place code here.
 
 	if (true) {
 		AllocConsole();

@@ -83,7 +83,6 @@ vec2 Mouse::Vec2Lerp(vec2 from, vec2 to, float percent) {
 //        value and the normal of the optimal path.
 //
 float Mouse::MouseDeviation(vec2 p1, vec2 p2, float x) {
-	// TODO: err checking
 	vec2 p0(0, 0);
 	vec2 p3(1, 0);
 	vec2 a = Vec2Lerp(p0, p1, x);
